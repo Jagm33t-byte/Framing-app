@@ -1,0 +1,3 @@
+gold_classic,static/frames/gold_classic.jpg
+slim_gold,static/frames/slim_gold.jpg
+grey_modern,static/frames/grey_modern.jpg 
