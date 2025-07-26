@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Manual Crop</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css">
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      text-align: center;
+      overflow-x: hidden;
+    }
+    #crop-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 80vh;
+    }
+    #canvas {
+      width: 100%;
+      max-width: 700px;
+      max-height: 500px;
+      display: block;
+      margin: 0 auto 20px auto;
+      box-shadow: 0 2px 12px #0002;
+      border-radius: 8px;
+      background: #eee;
+      cursor: crosshair;
+    }
+  </style>
+</head>
+<body>
+  <div id="crop-container">
+    <h3>Manual Adjust</h3>
+    <canvas id="canvas"></canvas>
+    <br>
+    <form id="cropForm" method="POST" action="/preview_crop">
+        <input type="hidden" name="filename" value="{{ filename }}">
+        <input type="hidden" name="x" id="crop_x">
+        <input type="hidden" name="y" id="crop_y">
+        <input type="hidden" name="width" id="crop_width">
+        <input type="hidden" name="height" id="crop_height">
+        <button type="submit">Crop</button>
+    </form>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const img = new Image();
+    img.src = "{{ url_for('uploaded_file', filename=filename) }}";
+    let points = JSON.parse('{{ corners|tojson|safe }}');
+    let dragging = null;
+    let draggingIdx = -1;
+    let imgScale = 1, imgOffsetX = 0, imgOffsetY = 0;
+
+    img.onload = function() {
+      fitCanvasAndImage();
+    };
+
+    function fitCanvasAndImage() {
+      canvas.width = Math.floor(Math.min(window.innerWidth * 0.9, 700));
+      canvas.height = Math.floor(Math.min(window.innerHeight * 0.7, 500));
+      const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+      imgScale = scale;
+      imgOffsetX = (canvas.width - img.width * scale) / 2;
+      imgOffsetY = (canvas.height - img.height * scale) / 2;
+      // Scale points to canvas
+      if (typeof points[0][0] === 'number') {
+        points = points.map(([x, y]) => [imgOffsetX + x * scale, imgOffsetY + y * scale]);
+      }
+      draw();
+    }
+
+    window.addEventListener('resize', fitCanvasAndImage);
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, imgOffsetX, imgOffsetY, img.width * imgScale, img.height * imgScale);
+      // Draw quadrilateral
+      ctx.strokeStyle = 'red';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(points[0][0], points[0][1]);
+      for (let i = 1; i < 4; i++) ctx.lineTo(points[i][0], points[i][1]);
+      ctx.closePath();
+      ctx.stroke();
+      // Draw points
+      for (let p of points) {
+        ctx.beginPath();
+        ctx.arc(p[0], p[1], 7, 0, Math.PI * 2);
+        ctx.fillStyle = 'blue';
+        ctx.fill();
+        ctx.strokeStyle = 'white';
+        ctx.stroke();
+      }
+    }
+
+    canvas.addEventListener('mousedown', e => {
+      const r = canvas.getBoundingClientRect();
+      const x = e.clientX - r.left;
+      const y = e.clientY - r.top;
+      for (let i = 0; i < points.length; i++) {
+        let p = points[i];
+        if (Math.hypot(p[0] - x, p[1] - y) < 12) {
+          dragging = p;
+          draggingIdx = i;
+          break;
+        }
+      }
+    });
+    canvas.addEventListener('mousemove', e => {
+      if (dragging) {
+        const r = canvas.getBoundingClientRect();
+        dragging[0] = Math.max(imgOffsetX, Math.min(imgOffsetX + img.width * imgScale, e.clientX - r.left));
+        dragging[1] = Math.max(imgOffsetY, Math.min(imgOffsetY + img.height * imgScale, e.clientY - r.top));
+        draw();
+      }
+    });
+    canvas.addEventListener('mouseup', () => { dragging = null; draggingIdx = -1; });
+    canvas.addEventListener('mouseleave', () => { dragging = null; draggingIdx = -1; });
+
+    function crop() {
+      // Convert points back to image coordinates
+      const imgPoints = points.map(([x, y]) => [
+        (x - imgOffsetX) / imgScale,
+        (y - imgOffsetY) / imgScale
+      ]);
+      const form = new FormData();
+      form.append('filename', "{{ filename }}");
+      for (let i = 0; i < 4; i++) {
+        form.append('x' + i, imgPoints[i][0]);
+        form.append('y' + i, imgPoints[i][1]);
+      }
+      fetch('/save_polygon_crop', {
+        method: 'POST',
+        body: form
+      })
+      .then(res => res.text())
+      .then(html => document.body.innerHTML = html);
+    }
+
+    document.getElementById('cropForm').addEventListener('submit', function(e) {
+        // Calculate the bounding box of the quadrilateral
+        const imgPoints = points.map(([x, y]) => [
+            (x - imgOffsetX) / imgScale,
+            (y - imgOffsetY) / imgScale
+        ]);
+        const xs = imgPoints.map(p => p[0]);
+        const ys = imgPoints.map(p => p[1]);
+        const minX = Math.max(0, Math.min(...xs));
+        const minY = Math.max(0, Math.min(...ys));
+        const maxX = Math.max(...xs);
+        const maxY = Math.max(...ys);
+        document.getElementById('crop_x').value = minX;
+        document.getElementById('crop_y').value = minY;
+        document.getElementById('crop_width').value = maxX - minX;
+        document.getElementById('crop_height').value = maxY - minY;
+    });
+  </script>
+</body>
+</html>

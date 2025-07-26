@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Select Frame</title>
+    <style>
+        .frame-preview-container {
+            position: relative;
+            display: inline-block;
+        }
+        .frame-corner {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+        }
+        .frame-topleft { top: 0; left: 0; transform: rotate(0deg); }
+        .frame-topright { top: 0; right: 0; transform: scaleX(-1); }
+        .frame-bottomleft { bottom: 0; left: 0; transform: scaleY(-1); }
+        .frame-bottomright { bottom: 0; right: 0; transform: rotate(180deg); }
+    </style>
+</head>
+<body>
+    <script>
+        // Assign frames to a JS variable for lookup (declare only once)
+        window.lshapeFrames = {{ frames|tojson }};
+    </script>
+    <h1>Cropped Painting Dimensions: {{ width }} x {{ height }}</h1>
+    <img src="{{ url_for('static', filename='cropped/' + filename) }}" width="400"><br><br>
+
+    <form method="post" action="/frame_preview">
+        <input type="hidden" name="filename" value="{{ filename }}">
+        <input type="hidden" name="width" value="{{ width }}">
+        <input type="hidden" name="height" value="{{ height }}">
+        <b>Select a Frame Style:</b><br>
+        {% for frame in frames %}
+          <label>
+            <input type="radio" name="frame" value="{{ frame.name }}" {% if loop.first %}checked{% endif %}>
+            <img src="{{ url_for('static', filename='frames/' + frame.name + '.png') }}" alt="{{ frame.name }} L-corner" width="80" height="80" style="object-fit:contain; border:1px solid #ccc;">
+            {{ frame.name }}
+          </label><br>
+        {% endfor %}
+        <br>
+        <input type="submit" value="Preview">
+    </form>
+
+    <script>
+    // Use the global lshapeFrames variable
+    const frames = window.lshapeFrames;
+    // Change frame corners when a different frame is selected
+    const radios = document.querySelectorAll('input[name="frame"]');
+    radios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            const selected = this.value;
+            const frame = frames.find(f => f.name === selected);
+            if (frame) {
+                document.getElementById('cornerTL').src = '/' + frame.img_path;
+                document.getElementById('cornerTR').src = '/' + frame.img_path;
+                document.getElementById('cornerBL').src = '/' + frame.img_path;
+                document.getElementById('cornerBR').src = '/' + frame.img_path;
+            }
+        });
+    });
+    </script>
+</body>
+</html> 

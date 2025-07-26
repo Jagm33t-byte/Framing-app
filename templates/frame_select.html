@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Select Frame Style</title>
+    <style>
+        .frame-thumb {
+            width: 60px;
+            vertical-align: middle;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Cropped Painting Dimensions: {{ height }} x {{ width }}</h2>
+    <img src="/cropped/{{ filename }}?v={{ range(1000000)|random }}" style="max-width:300px; max-height:300px; display:block; margin-bottom:20px;">
+    <form method="POST" action="/frame_preview">
+        <input type="hidden" name="filename" value="{{ filename }}">
+        <input type="hidden" name="width" value="{{ width }}">
+        <input type="hidden" name="height" value="{{ height }}">
+        <label><b>Select a Frame Style:</b></label><br>
+        {% for frame in frames %}
+            <input type="radio" name="frame" value="{{ frame.name }}" id="frame_{{ loop.index0 }}" {% if loop.first %}checked{% endif %}>
+            <label for="frame_{{ loop.index0 }}">
+                <img src="/{{ frame.img_path|replace('.png', '.jpg') }}" class="frame-thumb" alt="{{ frame.name }}">{{ frame.name }}
+            </label><br>
+        {% endfor %}
+        <br>
+        <button type="submit">Preview</button>
+    </form>
+</body>
+</html> 

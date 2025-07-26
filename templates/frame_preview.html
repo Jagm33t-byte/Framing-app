@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Frame Preview</title>
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+</head>
+<body>
+    <h2>Preview: {{ frame.name }} Frame</h2>
+    <div style="text-align:center;">
+        <img src="/{{ preview_path }}" style="max-width:600px; max-height:600px; border:1px solid #ccc;">
+    </div>
+    <form method="POST" action="/show_final">
+        <input type="hidden" name="filename" value="{{ filename }}">
+        <input type="hidden" name="frame" value="{{ frame.name }}">
+        <button type="submit">Confirm</button>
+    </form>
+    <form method="POST" action="/frame_select">
+        <input type="hidden" name="filename" value="{{ filename }}">
+        <input type="hidden" name="width" value="{{ width }}">
+        <input type="hidden" name="height" value="{{ height }}">
+        <button type="submit">Back</button>
+    </form>
+</body>
+</html> 
